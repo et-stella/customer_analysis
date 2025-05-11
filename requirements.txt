@@ -5,5 +5,4 @@ plotly
 seaborn
 matplotlib
 networkx
-graphviz
-
+pyvis
