@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
-import graphviz
 
 # -------------------------
 # 1. 샘플 데이터 생성
@@ -38,26 +37,22 @@ if customer_filter != "All":
     df = df[df['customer_type'] == customer_filter]
 
 # -------------------------
-# 3. 구매 경로 계층형 트리 시각화 (Graphviz)
+# 3. 텍스트 트리 구조 시각화 (구매 경로)
 # -------------------------
+st.subheader("Text-based Purchase Path Tree")
 df_triplet = df[df['purchase_rank'].isin([1, 2, 3])]
 df_triplet = df_triplet.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
 df_triplet.columns = ['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']
 
 path_counts = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']).size().reset_index(name='count')
 
-st.subheader("Hierarchical Tree View of Purchase Flow")
-dot = graphviz.Digraph(format='png')
-dot.attr(rankdir='LR')
-
-for _, row in path_counts.iterrows():
-    dot.edge(f"1st: {row['purchase_rank_1']}", f"2nd: {row['purchase_rank_2']}", label=str(row['count']))
-    dot.edge(f"2nd: {row['purchase_rank_2']}", f"3rd: {row['purchase_rank_3']}", label=str(row['count']))
-
-st.graphviz_chart(dot)
+if not path_counts.empty:
+    st.text("Example Tree Structure (with counts):")
+    for _, row in path_counts.iterrows():
+        st.text(f"{row['purchase_rank_1']}\n  └── {row['purchase_rank_2']}\n      └── {row['purchase_rank_3']}  ({row['count']} customers)")
 
 # -------------------------
-# 4. Sunburst Chart
+# 4. Sunburst Chart (구매 플로우 시각화)
 # -------------------------
 st.subheader("Sunburst Chart: Purchase Flow (1st → 2nd → 3rd)")
 if not path_counts.empty:
