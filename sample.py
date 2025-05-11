@@ -34,28 +34,35 @@ if customer_filter != "All":
     df = df[df['customer_type'] == customer_filter]
 
 # -------------------------
-# 3. Sankey 시각화를 위한 데이터 준비
+# 3. Sankey 시각화를 위한 데이터 준비 (1st → 2nd → 3rd)
 # -------------------------
-df_pair = df[df['purchase_rank'].isin([1, 2])]
-df_pair = df_pair.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
-link_counts = df_pair.groupby([1, 2]).size().reset_index(name='count')
+df_triplet = df[df['purchase_rank'].isin([1, 2, 3])]
+df_triplet = df_triplet.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
 
-nodes = list(set(link_counts[1]).union(set(link_counts[2])))
+link_counts_1_2 = df_triplet.groupby([1, 2]).size().reset_index(name='count')
+link_counts_2_3 = df_triplet.groupby([2, 3]).size().reset_index(name='count')
+
+nodes = list(set(link_counts_1_2[1]).union(set(link_counts_1_2[2])).union(set(link_counts_2_3[1])).union(set(link_counts_2_3[2])))
 node_map = {name: i for i, name in enumerate(nodes)}
+
+# 링크 구성
+sources = [node_map[a] for a in link_counts_1_2[1]] + [node_map[a] for a in link_counts_2_3[1]]
+targets = [node_map[b] for b in link_counts_1_2[2]] + [node_map[b] for b in link_counts_2_3[2]]
+values = list(link_counts_1_2['count']) + list(link_counts_2_3['count'])
 
 # -------------------------
 # 4. Sankey Chart 생성
 # -------------------------
-if not link_counts.empty:
+if values:
     fig = go.Figure(data=[go.Sankey(
         node=dict(label=nodes, pad=15, thickness=20),
         link=dict(
-            source=[node_map[a] for a in link_counts[1]],
-            target=[node_map[b] for b in link_counts[2]],
-            value=link_counts['count']
+            source=sources,
+            target=targets,
+            value=values
         )
     )])
-    st.subheader("1st → 2nd Purchase Flow")
+    st.subheader("1st → 2nd → 3rd Purchase Flow")
     st.plotly_chart(fig)
 else:
     st.warning("Not enough data to generate Sankey chart.")
