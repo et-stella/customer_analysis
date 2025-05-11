@@ -59,13 +59,13 @@ for _, row in path_counts.iterrows():
 # 재귀 함수로 출력
 
 def print_path(prefix, key, depth):
-    if depth >= len(key):
+    if depth >= len(key) or depth >= len(level_dicts):
         return
     indent = "    " * depth
-    st.text(f"{indent}└── {key[depth]} ({sum(c for _, c in level_dicts[depth].get(key, []))} customers)")
-    if depth < len(level_dicts):
-        for child, count in level_dicts[depth].get(key, []):
-            print_path(key + (child,), key + (child,), depth+1)
+    children = level_dicts[depth].get(key, [])
+    st.text(f"{indent}└── {key[depth]} ({sum(c for _, c in children)} customers)")
+    for child, count in children:
+        print_path(key + (child,), key + (child,), depth + 1)
 
 # 출력 루트 노드부터
 roots = defaultdict(int)
