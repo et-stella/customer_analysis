@@ -94,18 +94,31 @@ for ctype in customer_types:
     repeat_buyers = purchase_counts[purchase_counts >= 2].count()
     repeat_ratio = round((repeat_buyers / unique_customers) * 100, 1) if unique_customers > 0 else np.nan
 
+        # 평균 구매 주기 (전체 고객 기준)
+    intervals = []
+    for cust_id, cust_df in group_df.groupby('customer_id'):
+        cust_df = cust_df.sort_values('order_date')
+        if len(cust_df) > 1:
+            diff = cust_df['order_date'].diff().dropna().dt.days
+            intervals.extend(diff.tolist())
+    avg_interval = round(np.mean(intervals), 1) if intervals else np.nan
+
     sum_stats.append({
         "Customer Type": ctype,
         "Total Purchases": total_purchase,
         "Unique Customers": unique_customers,
         "Avg Purchases per Customer": avg_purchase_per_user,
-        "Repeat Buyer Ratio (%)": repeat_ratio
+        "Repeat Buyer Ratio (%)": repeat_ratio,
+        "Avg Purchase Interval (days)": avg_interval
     })
 
 summary_df = pd.DataFrame(sum_stats)
 st.dataframe(summary_df)
 fig = px.bar(summary_df, x="Customer Type", y="Avg Purchases per Customer", text="Avg Purchases per Customer", title="Average Purchases per Customer by Type")
 st.plotly_chart(fig)
+
+fig2 = px.bar(summary_df, x="Customer Type", y="Avg Purchase Interval (days)", text="Avg Purchase Interval (days)", title="Average Purchase Interval (days) by Type")
+st.plotly_chart(fig2)
 
 # -------------------------
 # 고객 특성 및 채널 Top 5 분석
