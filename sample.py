@@ -77,35 +77,67 @@ for root, total in roots.items():
         print_path((root, child), (root, child), 1)
 
 # -------------------------
-# 4.5 고객 유형별 평균 구매 주기 비교
+# 4.4 고객 유형별 총 구매 횟수, 1인당 평균 구매 횟수, 2회 이상 구매자 비중, 성별/연령/채널 분석
 # -------------------------
-st.subheader("Average Purchase Interval by Customer Type")
+# -------------------------
+st.subheader("Customer Type Summary: Total, Avg Purchases")
+sum_stats = []
 
-intervals = []
-for ctype in ["All"] + customer_types:
-    if ctype == "All":
-        group_df = df.copy()
-    else:
-        group_df = df[df['customer_type'] == ctype]
-    days = []
-    for cust_id, cust_df in group_df.groupby('customer_id'):
-        cust_df = cust_df.sort_values('order_date')
-        if len(cust_df) > 1:
-            diff = cust_df['order_date'].diff().dropna().dt.days
-            days.extend(diff.tolist())
-    if days:
-        avg_days = round(np.mean(days), 1)
-    else:
-        avg_days = np.nan
-    intervals.append({"Customer Type": ctype, "Avg Purchase Interval (days)": avg_days})
+for ctype in customer_types:
+    group_df = df[df['customer_type'] == ctype]
+    total_purchase = group_df.shape[0]
+    unique_customers = group_df['customer_id'].nunique()
+    avg_purchase_per_user = round(total_purchase / unique_customers, 2) if unique_customers > 0 else np.nan
 
-interval_df = pd.DataFrame(intervals)
-st.dataframe(interval_df)
-fig_bar = px.bar(interval_df, x="Customer Type", y="Avg Purchase Interval (days)", text="Avg Purchase Interval (days)", title="Average Days Between Purchases by Customer Type")
-st.plotly_chart(fig_bar)
+    # 2회 이상 구매한 고객 수
+    purchase_counts = group_df.groupby('customer_id').size()
+    repeat_buyers = purchase_counts[purchase_counts >= 2].count()
+    repeat_ratio = round((repeat_buyers / unique_customers) * 100, 1) if unique_customers > 0 else np.nan
+
+    sum_stats.append({
+        "Customer Type": ctype,
+        "Total Purchases": total_purchase,
+        "Unique Customers": unique_customers,
+        "Avg Purchases per Customer": avg_purchase_per_user,
+        "Repeat Buyer Ratio (%)": repeat_ratio
+    })
+
+summary_df = pd.DataFrame(sum_stats)
+st.dataframe(summary_df)
+fig = px.bar(summary_df, x="Customer Type", y="Avg Purchases per Customer", text="Avg Purchases per Customer", title="Average Purchases per Customer by Type")
+st.plotly_chart(fig)
 
 # -------------------------
-# 4. Sunburst Chart (구매 플로우 시각화)
+# 고객 특성 및 채널 Top 5 분석
+# -------------------------
+
+# 성별 및 연령 샘플 추가 생성
+gender_map = {cid: np.random.choice(['M', 'F']) for cid in df['customer_id'].unique()}
+age_map = {cid: np.random.randint(20, 60) for cid in df['customer_id'].unique()}
+
+df['gender'] = df['customer_id'].map(gender_map)
+df['age'] = df['customer_id'].map(age_map)
+df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 99], labels=['20s', '30s', '40s', '50s', '60+'])
+
+st.subheader("Customer Gender Distribution by Type")
+gender_summary = df.groupby(['customer_type', 'gender'])['customer_id'].nunique().reset_index()
+gender_summary.columns = ['Customer Type', 'Gender', 'Unique Customers']
+fig_gender = px.bar(gender_summary, x='Customer Type', y='Unique Customers', color='Gender', barmode='group', title="Gender Distribution by Customer Type")
+st.plotly_chart(fig_gender)
+
+st.subheader("Customer Age Group Distribution by Type")
+age_summary = df.groupby(['customer_type', 'age_group'])['customer_id'].nunique().reset_index()
+age_summary.columns = ['Customer Type', 'Age Group', 'Unique Customers']
+fig_age = px.bar(age_summary, x='Customer Type', y='Unique Customers', color='Age Group', barmode='group', title="Age Group Distribution by Customer Type")
+st.plotly_chart(fig_age)
+
+st.subheader("Top 5 Purchased Articles by Customer Type")
+top5 = df.groupby(['customer_type', 'article']).size().reset_index(name='count')
+top5 = top5.sort_values(['customer_type', 'count'], ascending=[True, False]).groupby('customer_type').head(5)
+fig_top5 = px.bar(top5, x='customer_type', y='count', color='article', text='article', barmode='stack', title='Top 5 Purchased Articles by Customer Type')
+st.plotly_chart(fig_top5)
+
+
 # -------------------------
 st.subheader("Sunburst Chart: Purchase Flow")
 if not path_counts.empty:
