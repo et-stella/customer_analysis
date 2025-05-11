@@ -38,16 +38,18 @@ if customer_filter != "All":
 # -------------------------
 df_triplet = df[df['purchase_rank'].isin([1, 2, 3])]
 df_triplet = df_triplet.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
+df_triplet.columns = ['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']
 
-link_counts_1_2 = df_triplet.groupby([1, 2]).size().reset_index(name='count')
-link_counts_2_3 = df_triplet.groupby([2, 3]).size().reset_index(name='count')
+link_counts_1_2 = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2']).size().reset_index(name='count')
+link_counts_2_3 = df_triplet.groupby(['purchase_rank_2', 'purchase_rank_3']).size().reset_index(name='count')
 
-nodes = list(set(link_counts_1_2[1]).union(set(link_counts_1_2[2])).union(set(link_counts_2_3[1])).union(set(link_counts_2_3[2])))
+nodes = list(set(link_counts_1_2['purchase_rank_1']).union(set(link_counts_1_2['purchase_rank_2']))
+             .union(set(link_counts_2_3['purchase_rank_2'])).union(set(link_counts_2_3['purchase_rank_3'])))
 node_map = {name: i for i, name in enumerate(nodes)}
 
 # 링크 구성
-sources = [node_map[a] for a in link_counts_1_2[1]] + [node_map[a] for a in link_counts_2_3[1]]
-targets = [node_map[b] for b in link_counts_1_2[2]] + [node_map[b] for b in link_counts_2_3[2]]
+sources = [node_map[a] for a in link_counts_1_2['purchase_rank_1']] + [node_map[a] for a in link_counts_2_3['purchase_rank_2']]
+targets = [node_map[b] for b in link_counts_1_2['purchase_rank_2']] + [node_map[b] for b in link_counts_2_3['purchase_rank_3']]
 values = list(link_counts_1_2['count']) + list(link_counts_2_3['count'])
 
 # -------------------------
