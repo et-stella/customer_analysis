@@ -72,7 +72,24 @@ sns.heatmap(heatmap_2_3, annot=True, fmt=".0f", cmap="YlOrBr", ax=ax2)
 st.pyplot(fig2)
 
 # -------------------------
-# 5. 원본 데이터 보기
+# 5. 특정 제품 기준 흐름 비중 시각화
+# -------------------------
+st.subheader("Purchase Transition Ratio from 1st Article (Omni Customers)")
+omni_df = df[df['customer_type'] == 'Omni']
+omni_pivot = omni_df.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
+omni_pivot.columns = ['1st', '2nd', '3rd']
+
+if not omni_pivot.empty:
+    selected_article = st.selectbox("Select 1st Purchase Article", sorted(omni_pivot['1st'].unique()))
+    filtered = omni_pivot[omni_pivot['1st'] == selected_article]
+    next_counts = filtered['2nd'].value_counts(normalize=True).mul(100).round(1).reset_index()
+    next_counts.columns = ['2nd Article', 'Percentage']
+    st.dataframe(next_counts)
+    fig3 = px.bar(next_counts, x='2nd Article', y='Percentage', text='Percentage', title=f"2nd Purchase Ratio After '{selected_article}'")
+    st.plotly_chart(fig3)
+
+# -------------------------
+# 6. 원본 데이터 보기
 # -------------------------
 if st.checkbox("Show Raw Data"):
     st.dataframe(df.reset_index(drop=True))
