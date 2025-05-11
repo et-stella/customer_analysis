@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
-import networkx as nx
+import graphviz
 
 # -------------------------
 # 1. 샘플 데이터 생성
@@ -38,7 +38,7 @@ if customer_filter != "All":
     df = df[df['customer_type'] == customer_filter]
 
 # -------------------------
-# 3. 구매 경로 트리형 노드 시각화 준비
+# 3. 구매 경로 계층형 트리 시각화 (Graphviz)
 # -------------------------
 df_triplet = df[df['purchase_rank'].isin([1, 2, 3])]
 df_triplet = df_triplet.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
@@ -46,20 +46,15 @@ df_triplet.columns = ['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']
 
 path_counts = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']).size().reset_index(name='count')
 
-# 네트워크 그래프 구성
-G = nx.DiGraph()
-for _, row in path_counts.iterrows():
-    G.add_edge(row['purchase_rank_1'], row['purchase_rank_2'], weight=row['count'])
-    G.add_edge(row['purchase_rank_2'], row['purchase_rank_3'], weight=row['count'])
+st.subheader("Hierarchical Tree View of Purchase Flow")
+dot = graphviz.Digraph(format='png')
+dot.attr(rankdir='LR')
 
-# 포지션 자동 배치
-pos = nx.spring_layout(G, k=0.5, iterations=50)
-fig_tree, ax_tree = plt.subplots(figsize=(10, 7))
-edges = G.edges()
-weights = [G[u][v]['weight'] for u,v in edges]
-nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color=weights, width=2.0, edge_cmap=plt.cm.Blues, ax=ax_tree)
-st.subheader("Node Tree View of Purchase Flow")
-st.pyplot(fig_tree)
+for _, row in path_counts.iterrows():
+    dot.edge(f"1st: {row['purchase_rank_1']}", f"2nd: {row['purchase_rank_2']}", label=str(row['count']))
+    dot.edge(f"2nd: {row['purchase_rank_2']}", f"3rd: {row['purchase_rank_3']}", label=str(row['count']))
+
+st.graphviz_chart(dot)
 
 # -------------------------
 # 4. 히트맵 (수치 시각화)
