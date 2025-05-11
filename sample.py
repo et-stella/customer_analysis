@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # -------------------------
 # 1. 샘플 데이터 생성
@@ -70,7 +72,22 @@ else:
     st.warning("Not enough data to generate Sankey chart.")
 
 # -------------------------
-# 5. 원본 데이터 보기
+# 5. 히트맵 (수치 시각화)
+# -------------------------
+st.subheader("Heatmap: 1st vs 2nd Purchase Frequency")
+heatmap_1_2 = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2']).size().unstack().fillna(0)
+fig1, ax1 = plt.subplots(figsize=(8, 6))
+sns.heatmap(heatmap_1_2, annot=True, fmt=".0f", cmap="YlGnBu", ax=ax1)
+st.pyplot(fig1)
+
+st.subheader("Heatmap: 2nd vs 3rd Purchase Frequency")
+heatmap_2_3 = df_triplet.groupby(['purchase_rank_2', 'purchase_rank_3']).size().unstack().fillna(0)
+fig2, ax2 = plt.subplots(figsize=(8, 6))
+sns.heatmap(heatmap_2_3, annot=True, fmt=".0f", cmap="YlOrBr", ax=ax2)
+st.pyplot(fig2)
+
+# -------------------------
+# 6. 원본 데이터 보기
 # -------------------------
 if st.checkbox("Show Raw Data"):
     st.dataframe(df.reset_index(drop=True))
