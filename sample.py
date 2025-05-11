@@ -57,11 +57,15 @@ for _, row in path_counts.iterrows():
         level_dicts[i][tuple(keys[:i+1])].append((keys[i+1], c))
 
 # 재귀 함수로 출력
+
 def print_path(prefix, key, depth):
+    if depth >= len(key):
+        return
     indent = "    " * depth
     st.text(f"{indent}└── {key[depth]} ({sum(c for _, c in level_dicts[depth].get(key, []))} customers)")
-    for child, count in level_dicts[depth].get(key, []):
-        print_path(key + (child,), key + (child,), depth+1)
+    if depth < len(level_dicts):
+        for child, count in level_dicts[depth].get(key, []):
+            print_path(key + (child,), key + (child,), depth+1)
 
 # 출력 루트 노드부터
 roots = defaultdict(int)
@@ -100,7 +104,6 @@ st.dataframe(interval_df)
 fig_bar = px.bar(interval_df, x="Customer Type", y="Avg Purchase Interval (days)", text="Avg Purchase Interval (days)", title="Average Days Between Purchases by Customer Type")
 st.plotly_chart(fig_bar)
 
-# 이후 코드는 유지
 # -------------------------
 # 4. Sunburst Chart (구매 플로우 시각화)
 # -------------------------
@@ -108,6 +111,19 @@ st.subheader("Sunburst Chart: Purchase Flow")
 if not path_counts.empty:
     fig_sun = px.sunburst(path_counts, path=list(df_multi.columns), values='count')
     st.plotly_chart(fig_sun)
+
+# -------------------------
+# 5. 히트맵 (수치 시각화)
+# -------------------------
+st.subheader("Heatmaps Between Sequential Purchases")
+
+for i in range(1, 6):
+    if f'{i}th' in df_multi.columns and f'{i+1}th' in df_multi.columns:
+        heatmap_data = df_multi.groupby([f'{i}th', f'{i+1}th']).size().unstack().fillna(0)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="viridis", ax=ax)
+        st.subheader(f"{i}th → {i+1}th Purchase Frequency")
+        st.pyplot(fig)
 
 # -------------------------
 # 5~7 그대로 유지
