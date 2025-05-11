@@ -57,7 +57,15 @@ for _, row in path_counts.iterrows():
 st.graphviz_chart(dot)
 
 # -------------------------
-# 4. 히트맵 (수치 시각화)
+# 4. Sunburst Chart
+# -------------------------
+st.subheader("Sunburst Chart: Purchase Flow (1st → 2nd → 3rd)")
+if not path_counts.empty:
+    fig_sun = px.sunburst(path_counts, path=['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3'], values='count')
+    st.plotly_chart(fig_sun)
+
+# -------------------------
+# 5. 히트맵 (수치 시각화)
 # -------------------------
 st.subheader("Heatmap: 1st vs 2nd Purchase Frequency")
 heatmap_1_2 = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2']).size().unstack().fillna(0)
@@ -72,7 +80,7 @@ sns.heatmap(heatmap_2_3, annot=True, fmt=".0f", cmap="YlOrBr", ax=ax2)
 st.pyplot(fig2)
 
 # -------------------------
-# 5. 특정 제품 기준 흐름 비중 시각화
+# 6. 특정 제품 기준 흐름 비중 시각화
 # -------------------------
 st.subheader("Purchase Transition Ratio from 1st Article (Omni Customers)")
 omni_df = df[df['customer_type'] == 'Omni']
@@ -89,7 +97,7 @@ if not omni_pivot.empty:
     st.plotly_chart(fig3)
 
 # -------------------------
-# 6. 원본 데이터 보기
+# 7. 원본 데이터 보기
 # -------------------------
 if st.checkbox("Show Raw Data"):
     st.dataframe(df.reset_index(drop=True))
