@@ -2,8 +2,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
+import networkx as nx
 
 # -------------------------
 # 1. 샘플 데이터 생성
@@ -36,43 +38,31 @@ if customer_filter != "All":
     df = df[df['customer_type'] == customer_filter]
 
 # -------------------------
-# 3. Sankey 시각화를 위한 데이터 준비 (1st → 2nd → 3rd)
+# 3. 구매 경로 트리형 노드 시각화 준비
 # -------------------------
 df_triplet = df[df['purchase_rank'].isin([1, 2, 3])]
 df_triplet = df_triplet.pivot(index='customer_id', columns='purchase_rank', values='article').dropna()
 df_triplet.columns = ['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']
 
-link_counts_1_2 = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2']).size().reset_index(name='count')
-link_counts_2_3 = df_triplet.groupby(['purchase_rank_2', 'purchase_rank_3']).size().reset_index(name='count')
+path_counts = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2', 'purchase_rank_3']).size().reset_index(name='count')
 
-nodes = list(set(link_counts_1_2['purchase_rank_1']).union(set(link_counts_1_2['purchase_rank_2']))
-             .union(set(link_counts_2_3['purchase_rank_2'])).union(set(link_counts_2_3['purchase_rank_3'])))
-node_map = {name: i for i, name in enumerate(nodes)}
+# 네트워크 그래프 구성
+G = nx.DiGraph()
+for _, row in path_counts.iterrows():
+    G.add_edge(row['purchase_rank_1'], row['purchase_rank_2'], weight=row['count'])
+    G.add_edge(row['purchase_rank_2'], row['purchase_rank_3'], weight=row['count'])
 
-# 링크 구성
-sources = [node_map[a] for a in link_counts_1_2['purchase_rank_1']] + [node_map[a] for a in link_counts_2_3['purchase_rank_2']]
-targets = [node_map[b] for b in link_counts_1_2['purchase_rank_2']] + [node_map[b] for b in link_counts_2_3['purchase_rank_3']]
-values = list(link_counts_1_2['count']) + list(link_counts_2_3['count'])
-
-# -------------------------
-# 4. Sankey Chart 생성
-# -------------------------
-if values:
-    fig = go.Figure(data=[go.Sankey(
-        node=dict(label=nodes, pad=15, thickness=20),
-        link=dict(
-            source=sources,
-            target=targets,
-            value=values
-        )
-    )])
-    st.subheader("1st → 2nd → 3rd Purchase Flow")
-    st.plotly_chart(fig)
-else:
-    st.warning("Not enough data to generate Sankey chart.")
+# 포지션 자동 배치
+pos = nx.spring_layout(G, k=0.5, iterations=50)
+fig_tree, ax_tree = plt.subplots(figsize=(10, 7))
+edges = G.edges()
+weights = [G[u][v]['weight'] for u,v in edges]
+nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color=weights, width=2.0, edge_cmap=plt.cm.Blues, ax=ax_tree)
+st.subheader("Node Tree View of Purchase Flow")
+st.pyplot(fig_tree)
 
 # -------------------------
-# 5. 히트맵 (수치 시각화)
+# 4. 히트맵 (수치 시각화)
 # -------------------------
 st.subheader("Heatmap: 1st vs 2nd Purchase Frequency")
 heatmap_1_2 = df_triplet.groupby(['purchase_rank_1', 'purchase_rank_2']).size().unstack().fillna(0)
@@ -87,7 +77,7 @@ sns.heatmap(heatmap_2_3, annot=True, fmt=".0f", cmap="YlOrBr", ax=ax2)
 st.pyplot(fig2)
 
 # -------------------------
-# 6. 원본 데이터 보기
+# 5. 원본 데이터 보기
 # -------------------------
 if st.checkbox("Show Raw Data"):
     st.dataframe(df.reset_index(drop=True))
