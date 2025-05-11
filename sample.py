@@ -115,16 +115,20 @@ if not path_counts.empty:
 # -------------------------
 # 5. 히트맵 (수치 시각화)
 # -------------------------
-st.subheader("Heatmaps Between Sequential Purchases")
+st.subheader("Purchase Transition Probability Heatmaps")
 
-for i in range(1, 6):
-    if f'{i}th' in df_multi.columns and f'{i+1}th' in df_multi.columns:
-        heatmap_data = df_multi.groupby([f'{i}th', f'{i+1}th']).size().unstack().fillna(0)
+for i in range(1, 3):  # Only 1st→2nd and 2nd→3rd
+    col_from = f"{i}th"
+    col_to = f"{i+1}th"
+    if col_from in df_multi.columns and col_to in df_multi.columns:
+        pair_df = df_multi[[col_from, col_to]].dropna()
+        total_from = pair_df.groupby(col_from).size()
+        prob_matrix = pair_df.groupby([col_from, col_to]).size().unstack().fillna(0)
+        prob_matrix = prob_matrix.div(total_from, axis=0) * 100
         fig, ax = plt.subplots(figsize=(8, 6))
-        sns.heatmap(heatmap_data, annot=True, fmt=".0f", cmap="viridis", ax=ax)
-        st.subheader(f"{i}th → {i+1}th Purchase Frequency")
+        sns.heatmap(prob_matrix, annot=True, fmt=".1f", cmap="YlGnBu", ax=ax, cbar_kws={'label': 'Transition %'})
+        st.subheader(f"{col_from} → {col_to} Transition Probability (%)")
         st.pyplot(fig)
 
-# -------------------------
 # 5~7 그대로 유지
 # ... (이후 코드 생략: Heatmap, Omni 분석, Raw Data)
