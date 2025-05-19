@@ -8,27 +8,32 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 
 # -------------------------
-# 1. 샘플 데이터 생성
+# 1. 엑셀 업로드 데이터 불러오기
 # -------------------------
 st.title("Customer Purchase Flow Analysis")
 
-np.random.seed(42)
-customers = [f"CUST_{i}" for i in range(1, 31)]
-articles = ["Lipstick", "Foundation", "Cleanser", "Perfume", "Serum", "Toner", "Mascara"]
-customer_types = ["Online", "Offline", "Omni"]
+uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
 
-records = []
-for cust in customers:
-    ctype = np.random.choice(customer_types)
-    num_purchases = np.random.randint(1, 7)  # 최대 6단계까지 생성
-    dates = pd.date_range(start='2024-01-01', periods=90).to_list()
-    chosen_dates = sorted(np.random.choice(dates, num_purchases, replace=False))
-    for i, d in enumerate(chosen_dates):
-        article = np.random.choice(articles)
-        records.append([cust, ctype, d, article, i+1])
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
 
-df = pd.DataFrame(records, columns=['customer_id', 'customer_type', 'order_date', 'article', 'purchase_rank'])
-df.sort_values(by=['customer_id', 'order_date'], inplace=True)
+    # 날짜 변환
+    if 'order_date' in df.columns:
+        df['order_date'] = pd.to_datetime(df['order_date'])
+
+    # 정렬
+    df.sort_values(by=['customer_id', 'order_date'], inplace=True)
+else:
+    st.warning("Please upload an Excel file with columns: customer_id, customer_type, order_date, article, purchase_rank")
+    st.stop()
+
+# -------------------------
+# 1.1 customer_types 동적 추출
+# -------------------------
+if 'customer_type' in df.columns:
+    customer_types = sorted(df['customer_type'].dropna().unique().tolist())
+else:
+    customer_types = []
 
 # -------------------------
 # 2. 고객 유형 필터
@@ -124,13 +129,15 @@ st.plotly_chart(fig2)
 # 고객 특성 및 채널 Top 5 분석
 # -------------------------
 
-# 성별 및 연령 샘플 추가 생성
-gender_map = {cid: np.random.choice(['M', 'F']) for cid in df['customer_id'].unique()}
-age_map = {cid: np.random.randint(20, 60) for cid in df['customer_id'].unique()}
-
-df['gender'] = df['customer_id'].map(gender_map)
-df['age'] = df['customer_id'].map(age_map)
-df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 99], labels=['20s', '30s', '40s', '50s', '60+'])
+# 성별 및 연령, 국적 정보가 파일에 있는 경우 그대로 사용
+if 'gender' in df.columns and 'age' in df.columns:
+    df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 120], labels=['20s', '30s', '40s', '50s', '60+'])
+else:
+    gender_map = {cid: np.random.choice(['M', 'F']) for cid in df['customer_id'].unique()}
+    age_map = {cid: np.random.randint(20, 60) for cid in df['customer_id'].unique()}
+    df['gender'] = df['customer_id'].map(gender_map)
+    df['age'] = df['customer_id'].map(age_map)
+    df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 120], labels=['20s', '30s', '40s', '50s', '60+'])pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 99], labels=['20s', '30s', '40s', '50s', '60+'])
 
 st.subheader("Customer Gender Distribution by Type")
 gender_summary = df.groupby(['customer_type', 'gender'])['customer_id'].nunique().reset_index()
