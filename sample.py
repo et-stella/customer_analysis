@@ -137,7 +137,7 @@ else:
     age_map = {cid: np.random.randint(20, 60) for cid in df['customer_id'].unique()}
     df['gender'] = df['customer_id'].map(gender_map)
     df['age'] = df['customer_id'].map(age_map)
-    df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 120], labels=['20s', '30s', '40s', '50s', '60+'])pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 99], labels=['20s', '30s', '40s', '50s', '60+'])
+    df['age_group'] = pd.cut(df['age'], bins=[19, 29, 39, 49, 59, 120], labels=['20s', '30s', '40s', '50s', '60+'])
 
 st.subheader("Customer Gender Distribution by Type")
 gender_summary = df.groupby(['customer_type', 'gender'])['customer_id'].nunique().reset_index()
